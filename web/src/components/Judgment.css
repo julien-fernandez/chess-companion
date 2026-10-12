@@ -1,0 +1,26 @@
+.judgment { max-width: 480px; margin: 0 auto; padding: 24px 16px; color: #eee; font-size: 18px; }
+.judgment h1 { font-size: 24px; margin: 0 0 8px; }
+.judgment button {
+  font: inherit; color: inherit; background: #333; border: 1px solid #555;
+  border-radius: 8px; padding: 12px 16px; cursor: pointer;
+}
+.judgment-count { color: #999; margin: 0 0 8px; }
+.judgment-board { margin: 12px 0; }
+.judgment-verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.judgment-verdicts button { min-height: 64px; }
+.judgment-reasons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.judgment-reasons button { padding: 8px 12px; font-size: 15px; }
+.judgment-reasons button.chosen { background: #2f5d3a; border-color: #4c8a5a; }
+.judgment-outcome { font-weight: bold; }
+.judgment-recalled { color: #7ee08a; }
+.judgment-recalled_after_retry { color: #f0c05a; }
+.judgment-failed { color: #f08080; }
+.judgment-layer ul { margin: 4px 0 8px; padding-left: 20px; }
+.judgment textarea { width: 100%; min-height: 64px; box-sizing: border-box; font: inherit; background: #222; color: #eee; border: 1px solid #555; border-radius: 8px; padding: 8px; }
+.judgment-wrong { display: block; margin: 8px 0; }
+.judgment-next { width: 100%; margin-top: 12px; background: #2f5d3a !important; }
+.judgment-status { color: #f0c05a; }
+.judgment-form { display: flex; gap: 8px; }
+.judgment-changes { color: #999; font-size: 14px; margin: 8px 0; }
+.judgment-changes-title { margin: 0 0 4px; font-style: italic; }
+.judgment-changes ul { margin: 2px 0 6px; padding-left: 20px; }

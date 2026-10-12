@@ -1,0 +1,30 @@
+[project]
+name = "chess-companion"
+version = "0.1.0"
+description = "Companion IA pour jouer aux échecs par-dessus l'échiquier physique"
+requires-python = ">=3.11"
+dependencies = [
+    "chess>=1.10",
+    "stockfish>=3.28",
+    "SpeechRecognition>=3.10",
+    "gTTS>=2.5",
+    "pygame>=2.5",
+    "colorama>=0.4",
+    "pyaudio>=0.2",
+    "numpy>=1.24",
+    "noisereduce>=3.0",
+    "silero-vad>=5.0",
+]
+
+[project.scripts]
+chess-companion = "main:main"
+
+[dependency-groups]
+dev = [
+    "psycopg[binary]>=3.3.6",
+    "pytest>=8.0",
+    "pyyaml>=6.0.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

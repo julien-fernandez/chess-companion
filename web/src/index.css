@@ -1,0 +1,14 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #141414;
+  color: #dcdcdc;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100svh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+}

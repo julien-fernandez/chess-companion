@@ -1,0 +1,872 @@
+<title>L'annotateur et la machine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #eef0f2;
+    --raised: #fafbfc;
+    --sunken: #e4e7ea;
+    --ink: #15181c;
+    --ink-soft: #565d67;
+    --ink-faint: #838b95;
+    --rule: #cdd2d8;
+    --rule-soft: #dee2e7;
+    --human: #26415e;
+    --human-wash: #e3ebf3;
+    --machine: #6d6330;
+    --machine-wash: #efeade;
+    --flag: #8c3a2e;
+    --flag-wash: #f4e4e1;
+    --sq-light: #e6e0d3;
+    --sq-dark: #a4a294;
+    --sq-mark: #c9b45c;
+    --board-ink: #14161a;
+    --board-frame: #8b8778;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131519;
+      --raised: #1b1f24;
+      --sunken: #0e1013;
+      --ink: #e7eaee;
+      --ink-soft: #9ba3ad;
+      --ink-faint: #6e7681;
+      --rule: #2b3037;
+      --rule-soft: #22262c;
+      --human: #92b6da;
+      --human-wash: #182634;
+      --machine: #cbb977;
+      --machine-wash: #262115;
+      --flag: #dd9084;
+      --flag-wash: #2e1c19;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #131519;
+    --raised: #1b1f24;
+    --sunken: #0e1013;
+    --ink: #e7eaee;
+    --ink-soft: #9ba3ad;
+    --ink-faint: #6e7681;
+    --rule: #2b3037;
+    --rule-soft: #22262c;
+    --human: #92b6da;
+    --human-wash: #182634;
+    --machine: #cbb977;
+    --machine-wash: #262115;
+    --flag: #dd9084;
+    --flag-wash: #2e1c19;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Spectral, Georgia, 'Times New Roman', serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ── Masthead ────────────────────────────────────────────────── */
+
+  header { padding: 64px 0 40px; border-bottom: 2px solid var(--ink); }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-size: clamp(38px, 6vw, 62px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.022em;
+    margin: 0 0 22px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0;
+    font-weight: 300;
+  }
+  .standfirst em { color: var(--ink); font-style: italic; }
+
+  /* ── Method note ─────────────────────────────────────────────── */
+
+  .method {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 56px;
+  }
+  .method div {
+    padding: 22px 24px 24px 0;
+    border-right: 1px solid var(--rule-soft);
+  }
+  .method div:last-child { border-right: 0; }
+  .method dt {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 7px;
+  }
+  .method dd { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink-soft); }
+  .method dd strong { color: var(--ink); font-weight: 600; }
+
+  /* ── Section headings ────────────────────────────────────────── */
+
+  h2 {
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ── Legend ──────────────────────────────────────────────────── */
+
+  .legend { margin-bottom: 64px; }
+
+  .families {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 2px 28px;
+    margin-bottom: 28px;
+  }
+  .fam {
+    display: grid;
+    grid-template-columns: 15px 1fr;
+    gap: 9px;
+    align-items: baseline;
+    padding: 7px 0;
+    font-size: 14.5px;
+    border-bottom: 1px dotted var(--rule-soft);
+  }
+  .fam b {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .fam span { color: var(--ink-soft); font-size: 13.5px; }
+  .scope { font-size: 13px; line-height: 1; }
+  .scope.in { color: var(--machine); }
+  .scope.part { color: var(--ink-faint); }
+  .scope.out { color: var(--flag); }
+
+  .legend > p {
+    font-size: 15px;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    margin: 0;
+  }
+
+  /* ── Entry ───────────────────────────────────────────────────── */
+
+  .entry {
+    display: grid;
+    grid-template-columns: 268px 1fr;
+    gap: 34px;
+    padding: 40px 0 44px;
+    border-top: 1px solid var(--rule);
+  }
+  .entry:first-of-type { border-top: 2px solid var(--ink); }
+
+  .plate { position: sticky; top: 24px; align-self: start; }
+
+  .gameline {
+    font-size: 15px;
+    line-height: 1.35;
+    margin: 0 0 3px;
+    font-weight: 600;
+  }
+  .venue {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-style: italic;
+    margin: 0 0 14px;
+  }
+  .movetag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    padding: 3px 9px;
+    margin-bottom: 14px;
+  }
+
+  /* The diagram is a printed figure: it keeps its paper colours in both themes. */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1px solid var(--board-frame);
+    background: var(--sq-light);
+  }
+  .board div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    line-height: 1;
+    color: var(--board-ink);
+    user-select: none;
+  }
+  .board div.d { background: var(--sq-dark); }
+  .board div.m { background: var(--sq-mark); }
+  .board div.m.d { background: color-mix(in srgb, var(--sq-mark) 78%, #6d6a5c); }
+
+  .fen {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--ink-faint);
+    word-break: break-all;
+    margin: 11px 0 0;
+  }
+
+  /* ── The two voices ──────────────────────────────────────────── */
+
+  .voices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-left: 1px solid var(--rule);
+  }
+  .voice { padding: 0 26px 4px; border-right: 1px solid var(--rule-soft); }
+  .voice:last-child { border-right: 0; padding-right: 0; }
+
+  .who {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin: 0 0 12px;
+  }
+  .voice.h .who { color: var(--human); }
+  .voice.m .who { color: var(--machine); }
+
+  blockquote {
+    margin: 0 0 12px;
+    font-size: 16.5px;
+    line-height: 1.52;
+    font-style: italic;
+    color: var(--ink);
+  }
+  .voice.h blockquote {
+    border-left: 3px solid var(--human);
+    padding-left: 15px;
+  }
+  .attrib {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+    padding-left: 18px;
+  }
+  .attrib b { font-weight: 600; color: var(--ink); font-style: normal; }
+
+  .famtag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: 1px solid var(--human);
+    color: var(--human);
+    background: var(--human-wash);
+    margin-left: 18px;
+  }
+
+  .spoken {
+    font-size: 15.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--machine-wash);
+    border-left: 3px solid var(--machine);
+    padding: 11px 14px;
+    margin: 0 0 14px;
+  }
+  .spoken::before {
+    content: '🔊 ';
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  .axes { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+  .ax {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 2px 7px;
+    background: var(--sunken);
+    border: 1px solid var(--rule-soft);
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .ax.hit { border-color: var(--machine); color: var(--machine); background: var(--machine-wash); font-weight: 500; }
+  .ax.miss { border-color: var(--flag); color: var(--flag); background: var(--flag-wash); font-weight: 500; }
+  .axnote { font-size: 12.5px; color: var(--ink-faint); margin: 8px 0 0; font-style: italic; }
+
+  /* ── Verdict ─────────────────────────────────────────────────── */
+
+  .verdict {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 268px 1fr;
+    gap: 34px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px dotted var(--rule);
+  }
+  .vlabel {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    align-self: start;
+  }
+  .v-match .vlabel { color: var(--machine); }
+  .v-partial .vlabel { color: var(--ink-faint); }
+  .v-clash .vlabel { color: var(--flag); }
+  .v-out .vlabel { color: var(--human); }
+  .verdict p { margin: 0; font-size: 15.5px; line-height: 1.55; max-width: 72ch; }
+  .verdict p strong { font-weight: 600; }
+
+  /* ── Tally ───────────────────────────────────────────────────── */
+
+  .tally { margin-top: 72px; padding-top: 40px; border-top: 2px solid var(--ink); }
+
+  .counts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule-soft);
+    margin-bottom: 44px;
+  }
+  .count { background: var(--paper); padding: 20px 18px; }
+  .count b {
+    display: block;
+    font-size: 34px;
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 7px;
+  }
+  .count.match b { color: var(--machine); }
+  .count.clash b { color: var(--flag); }
+  .count span { font-size: 13px; line-height: 1.4; color: var(--ink-soft); display: block; }
+
+  .finding {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: 26px;
+  }
+  .finding:first-of-type { border-top: 1px solid var(--rule); }
+  .finding h3 {
+    margin: 0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+  .finding p { margin: 0; font-size: 15px; line-height: 1.58; color: var(--ink-soft); max-width: 74ch; }
+  .finding p strong { color: var(--ink); font-weight: 600; }
+  .finding code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13px;
+    background: var(--sunken);
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 26px;
+    border-top: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    line-height: 1.65;
+  }
+  footer a { color: var(--human); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  footer a:hover { border-bottom-color: var(--human); }
+  footer a:focus-visible { outline: 2px solid var(--human); outline-offset: 3px; }
+  footer p { margin: 0 0 9px; max-width: 78ch; }
+
+  @media (max-width: 880px) {
+    .entry, .verdict { grid-template-columns: 1fr; gap: 26px; }
+    .plate { position: static; max-width: 300px; }
+    .voices { grid-template-columns: 1fr; border-left: 0; gap: 28px; }
+    .voice { padding: 0; border-right: 0; }
+    .finding { grid-template-columns: 1fr; gap: 8px; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Chess Companion · ontologie d'état · v0.4.0</p>
+  <h1>L'annotateur et la machine</h1>
+  <p class="standfirst">Huit positions de parties annotées par Nimzowitsch, Alekhine, Réti et Kasparov, lues côte à côte : le verbatim du maître, puis ce que l'ontologie d'état en dit toute seule. Ce qu'elle voit, ce qu'elle rate, et <em>ce dont elle n'a jamais eu à parler</em>.</p>
+</header>
+
+<dl class="method">
+  <div>
+    <dt>Positions</dt>
+    <dd><strong>8</strong>, tirées de 4 parties. Chaque FEN est obtenu en <strong>rejouant les coups</strong> avec chess.js depuis le premier — jamais lu sur un écran.</dd>
+  </div>
+  <div>
+    <dt>Verbatims</dt>
+    <dd>Notes originales des annotateurs, telles que publiées. Nimzowitsch commente sa propre partie ; Alekhine et Réti commentent Capablanca.</dd>
+  </div>
+  <div>
+    <dt>Lecture machine</dt>
+    <dd>32 axes déclarés, <strong>29 calculés</strong>. Aucun appel moteur, aucun LLM : FEN et géométrie des coups légaux.</dd>
+  </div>
+  <div>
+    <dt>Ce qui est comparé</dt>
+    <dd>Uniquement les axes <strong>non neutres</strong>. Un axe qui répond « équilibré » ne dit rien et n'entre pas dans la comparaison.</dd>
+  </div>
+</dl>
+
+<section class="legend">
+  <h2>Familles de commentaire — la clé de lecture</h2>
+  <div class="families">
+    <div class="fam"><span class="scope in">●</span><div><b>positional_state</b><br><span>Propriété durable de la position</span></div></div>
+    <div class="fam"><span class="scope in">●</span><div><b>evaluation</b><br><span>Jugement global sur qui est mieux</span></div></div>
+    <div class="fam"><span class="scope part">◐</span><div><b>plan</b><br><span>Intention sur plusieurs coups</span></div></div>
+    <div class="fam"><span class="scope out">○</span><div><b>tactical_line</b><br><span>Variante forcée, vérifiable par calcul</span></div></div>
+    <div class="fam"><span class="scope out">○</span><div><b>move_quality</b><br><span>Verdict sur un coup joué</span></div></div>
+    <div class="fam"><span class="scope out">○</span><div><b>principle</b><br><span>Règle générale invoquée</span></div></div>
+  </div>
+  <p><span class="scope in">●</span> dans le périmètre de l'ontologie d'état &nbsp;·&nbsp; <span class="scope part">◐</span> partiel — elle décrit un FEN, pas une trajectoire &nbsp;·&nbsp; <span class="scope out">○</span> hors périmètre : c'est le travail de Stockfish ou du coach, pas du vocabulaire d'état. Sans cette clé, la comparaison mentirait : elle compterait comme « la machine n'a rien vu » ce qui est en réalité « l'annotateur ne parlait pas de ça ».</p>
+</section>
+
+<h2>Les huit positions</h2>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Nimzowitsch — Salwe</p>
+    <p class="venue">Carlsbad, 1911</p>
+    <span class="movetag">14. Nf3</span>
+    <div class="board" data-fen="r4rk1/pp1bb1pp/1q2pn2/3pB3/1P6/2PB1N2/P4PPP/R2Q1RK1" data-mark="f3"></div>
+    <p class="fen">r4rk1/pp1bb1pp/1q2pn2/3pB3/1P6/2PB1N2/P4PPP/R2Q1RK1 b - - 4 14</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Nimzowitsch</p>
+      <blockquote>The blockading forces are to be reinforced by the knight.</blockquote>
+      <p class="attrib">Notes de l'auteur à sa propre partie, <b>Mon Système</b>, partie n° 46</p>
+      <span class="famtag">plan</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">la tension monte au centre ; la cible est chez les blancs</p>
+      <div class="axes">
+        <span class="ax hit">advance_post_held = white</span>
+        <span class="ax hit">minor_piece_fit = white_better</span>
+        <span class="ax hit">advantage_durability = lasting</span>
+        <span class="ax">terrain_control = white_holds</span>
+        <span class="ax">hole_ownership = mutual</span>
+        <span class="ax miss">— rien sur le renfort à venir</span>
+      </div>
+      <p class="axnote">17 axes non neutres au total ; les 5 pertinents sont montrés.</p>
+    </div>
+  </div>
+
+  <div class="verdict v-partial">
+    <span class="vlabel">Partiel</span>
+    <p>L'ontologie voit <strong>l'avant-poste déjà tenu</strong> et le juge durable — la moitié statique de la phrase. Elle ne peut pas voir l'autre moitié : « <em>are to be reinforced</em> » est une intention à trois coups, et le modèle décrit un FEN, pas une trajectoire. Le manque est déclaré au périmètre, pas découvert ici.</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Nimzowitsch — Salwe</p>
+    <p class="venue">Carlsbad, 1911</p>
+    <span class="movetag">17. Ne5</span>
+    <div class="board" data-fen="2r2rk1/ppqb2pp/3bpn2/3pN3/1P1B4/2PB4/P3QPPP/R4RK1" data-mark="e5"></div>
+    <p class="fen">2r2rk1/ppqb2pp/3bpn2/3pN3/1P1B4/2PB4/P3QPPP/R4RK1 b - - 10 17</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Nimzowitsch</p>
+      <blockquote>The immobility of the e-pawn is now greater than ever. White has utilized his resources very economically.</blockquote>
+      <p class="attrib">Notes de l'auteur, <b>Mon Système</b> — la partie qu'il désigne comme la première jouée « <em>dans l'esprit de la nouvelle philosophie du centre</em> »</p>
+      <span class="famtag">positional_state</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">une pièce est en l'air ; la tension monte au centre ; la cible est chez les noirs</p>
+      <div class="axes">
+        <span class="ax hit">advance_post_held = white</span>
+        <span class="ax hit">terrain_control = white_holds</span>
+        <span class="ax hit">minor_piece_fit = white_better</span>
+        <span class="ax hit">advantage_durability = lasting</span>
+        <span class="ax">weakest_link = black_target</span>
+        <span class="ax miss">— aucun axe d'immobilité de pion</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-partial">
+    <span class="vlabel">Manque nommé</span>
+    <p>Le cavalier arrive en e5 et l'ontologie le voit exactement : <code>advance_post_held = white</code>, avantage <strong>durable</strong>, terrain tenu. Mais elle ne sait pas dire la chose que Nimzowitsch met au centre de tout son livre — <strong>qu'un pion adverse est immobilisé</strong>. Le vocabulaire porte <code>pawn_defects</code> (isolé, doublé, arriéré, pendant) et <code>pieces_out_of_action</code> pour les pièces ; il n'a aucun équivalent pour un pion cramponné. C'est le trou le plus net que ces huit positions révèlent.</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Nimzowitsch — Salwe</p>
+    <p class="venue">Carlsbad, 1911</p>
+    <span class="movetag">21. Qc2</span>
+    <div class="board" data-fen="2r2rk1/pp1b2pp/2q1pn2/3p4/1P1B4/2PB4/P1Q2PPP/4RRK1" data-mark="c2"></div>
+    <p class="fen">2r2rk1/pp1b2pp/2q1pn2/3p4/1P1B4/2PB4/P1Q2PPP/4RRK1 b - - 4 21</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Nimzowitsch</p>
+      <blockquote>the decisive re-grouping.</blockquote>
+      <p class="attrib">Notes de l'auteur, <b>Mon Système</b></p>
+      <span class="famtag">plan</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">une pièce est en l'air ; la tension monte au centre ; la cible est chez les noirs</p>
+      <div class="axes">
+        <span class="ax hit">bishop_pair = white</span>
+        <span class="ax hit">advantage_durability = lasting</span>
+        <span class="ax hit">terrain_control = white_holds</span>
+        <span class="ax miss">piece_cooperation = black_better</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-clash">
+    <span class="vlabel">Contradiction</span>
+    <p>Nimzowitsch appelle « <em>décisif</em> » un regroupement <strong>blanc</strong> ; au même instant l'ontologie attribue la meilleure coordination aux <strong>noirs</strong>. La cause est identifiable : <code>piece_cooperation</code> compte les <strong>liens de défense mutuelle</strong>, une position resserrée marque donc haut. Ce qui rend un regroupement décisif est l'orientation commune vers un but, que ce compteur ne mesure pas. Lasker, dont la métrique est tirée, le disait lui-même : « <em>a first, though inexact, measure</em> ».</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Capablanca — Tartakower</p>
+    <p class="venue">New York, 1924</p>
+    <span class="movetag">27. h5</span>
+    <div class="board" data-fen="4k3/p1p2r1p/1p4p1/n2p3P/P2P1P2/2PB2P1/6K1/R7" data-mark="h5"></div>
+    <p class="fen">4k3/p1p2r1p/1p4p1/n2p3P/P2P1P2/2PB2P1/6K1/R7 b - - 0 27</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Alekhine</p>
+      <blockquote>This is the calamity — the Rook now enters the hostile camp.</blockquote>
+      <p class="attrib">Annotations d'<b>Alexandre Alekhine</b> au tournoi de New York 1924</p>
+      <span class="famtag">plan</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">une pièce est en l'air ; chaque camp a une cible ; les deux boucliers sont entamés</p>
+      <div class="axes">
+        <span class="ax hit">plan_openness = white_freer</span>
+        <span class="ax hit">pawn_advance_edge = white_advanced</span>
+        <span class="ax hit">terrain_control = white_holds</span>
+        <span class="ax miss">seventh_rank = none</span>
+      </div>
+      <p class="axnote">La tour est encore en a1. Elle n'atteindra h7 qu'au coup 30.</p>
+    </div>
+  </div>
+
+  <div class="verdict v-out">
+    <span class="vlabel">Hors périmètre</span>
+    <p>L'ontologie répond <code>seventh_rank = none</code> et elle a <strong>raison</strong> : au moment où Alekhine écrit « <em>the Rook now enters</em> », aucune tour n'est sur la septième. Alekhine annote une <strong>irruption à venir</strong>, visible trois coups à l'avance. L'écart ici n'est pas une erreur de lecture, c'est la frontière entre décrire un état et anticiper — et elle est déclarée dans le périmètre v0.</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Capablanca — Tartakower</p>
+    <p class="venue">New York, 1924</p>
+    <span class="movetag">29. Rh1</span>
+    <div class="board" data-fen="4k3/p1p5/1p3rp1/n2p4/P2P1P2/2PB2P1/6K1/7R" data-mark="h1"></div>
+    <p class="fen">4k3/p1p5/1p3rp1/n2p4/P2P1P2/2PB2P1/6K1/7R b - - 1 29</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Réti</p>
+      <blockquote>White plays logically to utilize his advantage on the K-side and very properly does not concern himself with the weakness of the Q-side.</blockquote>
+      <p class="attrib">Annotations de <b>Richard Réti</b></p>
+      <span class="famtag">positional_state</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">la tension monte au centre ; pion(s) isolé(s) blanc(s) ; pion(s) arriéré(s) blanc(s) ; pion(s) isolé(s) noir(s)</p>
+      <div class="axes">
+        <span class="ax hit">key_file_control = white</span>
+        <span class="ax hit">plan_openness = white_freer</span>
+        <span class="ax hit">pawn_defects = white_isolated, white_backward</span>
+        <span class="ax hit">position_character = open</span>
+        <span class="ax hit">advance_post_held = black</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-match">
+    <span class="vlabel">Concordance</span>
+    <p>Les <strong>deux moitiés</strong> de la phrase de Réti sortent des axes. L'avantage à l'aile roi : <code>key_file_control = white</code> — la colonne h que la tour vient d'ouvrir — et <code>plan_openness = white_freer</code>. La faiblesse de l'aile dame dont Capablanca « <em>ne se soucie pas</em> » : <code>pawn_defects</code> relève un pion blanc isolé et un arriéré. L'ontologie ne dit pas qu'il a raison de l'ignorer — elle pose les deux termes de l'arbitrage.</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Capablanca — Tartakower</p>
+    <p class="venue">New York, 1924</p>
+    <span class="movetag">35. Kg3</span>
+    <div class="board" data-fen="5k2/p1p4R/1pr5/3p1pP1/P2P1P2/2P3K1/8/8" data-mark="g3"></div>
+    <p class="fen">5k2/p1p4R/1pr5/3p1pP1/P2P1P2/2P3K1/8/8 b - - 1 35</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Alekhine</p>
+      <blockquote>Decisive! White sacrifices material in order to obtain the classical position with King on f6, pawn on g6, and Rook on h7, whereupon the black pawns tumble like ripe apples.</blockquote>
+      <p class="attrib">Annotations d'<b>Alexandre Alekhine</b></p>
+      <span class="famtag">plan</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">une pièce est en l'air ; la cible est chez les blancs ; les deux rois sont exposés</p>
+      <div class="axes">
+        <span class="ax hit">seventh_rank = white_absolute</span>
+        <span class="ax hit">advantage_durability = volatile</span>
+        <span class="ax hit">passed_pawn_edge = white_better</span>
+        <span class="ax hit">weakest_link = white_target</span>
+        <span class="ax hit">plan_openness = both_forced</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-match">
+    <span class="vlabel">Concordance forte</span>
+    <p>Quatre axes racontent la phrase d'Alekhine dans l'ordre. La tour en h7 avec le roi noir enfermé : <code>seventh_rank = white_absolute</code> — la « septième absolue » que Nimzowitsch distingue de la simple. Le matériel offert : <code>weakest_link = white_target</code>, l'ontologie voit que ce sont les blancs qui exposent du matériel. Et surtout <code>advantage_durability = <strong>volatile</strong></code> : l'avantage ne tient pas à la structure mais au placement des pièces — ce qui <em>est</em> la définition d'un sacrifice pour une position. Les deux camps sont enfin <code>both_forced</code> : plus qu'un plan chacun.</p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Karpov — Kasparov</p>
+    <p class="venue">Championnat du monde, Moscou 1985, 16<sup>e</sup> partie</p>
+    <span class="movetag">16… Nd3</span>
+    <div class="board" data-fen="r2qr1k1/5ppp/p4n2/1pbP1bB1/8/N1Nn1B2/PP1Q1PPP/3R1RK1" data-mark="d3"></div>
+    <p class="fen">r2qr1k1/5ppp/p4n2/1pbP1bB1/8/N1Nn1B2/PP1Q1PPP/3R1RK1 w - - 2 17</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Kasparov</p>
+      <blockquote>White scattered his minor pieces about on either flank and are quite unable to coordinate, the placement of the knights being particularly depressing. But Black has the wonderful duo of Bf5 and Nd3 which completely paralyzes all three White major pieces.</blockquote>
+      <p class="attrib">Commentaire de <b>Garry Kasparov</b> sur sa propre préparation — la partie élue meilleure des 64 premiers <i>Informateurs</i></p>
+      <span class="famtag">positional_state</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">une fourchette est en l'air ; la tension monte au centre ; la cible est chez les noirs</p>
+      <div class="axes">
+        <span class="ax hit">advance_post_held = black</span>
+        <span class="ax hit">worst_piece = white</span>
+        <span class="ax hit">minor_piece_fit = black_better</span>
+        <span class="ax hit">terrain_control = black_holds</span>
+        <span class="ax hit">key_file_control = black</span>
+        <span class="ax miss">piece_cooperation = white_better</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-clash">
+    <span class="vlabel">Cinq sur six — et une contradiction franche</span>
+    <p>C'est la position la plus probante des huit. « <em>The placement of the knights being particularly depressing</em> » → <code>worst_piece = white</code> et <code>minor_piece_fit = black_better</code>. Le cavalier d3 → <code>advance_post_held = black</code>. La paralysie des pièces lourdes → <code>terrain_control</code> et <code>key_file_control</code> aux noirs. Cinq axes, sans moteur, sur une position de championnat du monde.</p>
+    <p style="margin-top:11px">Puis <code>piece_cooperation = <strong>white_better</strong></code>, là où Kasparov écrit « <em>quite unable to coordinate</em> ». Le même compteur que dans la partie de Nimzowitsch, la même cause : des pièces entassées se défendent beaucoup entre elles. <strong>Deux positions indépendantes qui prennent le même axe en défaut, sur le même mécanisme, désignent un défaut de métrique — pas un accident.</strong></p>
+  </div>
+</article>
+
+<article class="entry">
+  <div class="plate">
+    <p class="gameline">Botvinnik — Capablanca</p>
+    <p class="venue">AVRO, Rotterdam 1938</p>
+    <span class="movetag">30. Ba3</span>
+    <div class="board" data-fen="8/p3q1kp/1p2Pnp1/3pQ3/2pP4/BnP3N1/6PP/6K1" data-mark="a3"></div>
+    <p class="fen">8/p3q1kp/1p2Pnp1/3pQ3/2pP4/BnP3N1/6PP/6K1 b - - 6 30</p>
+  </div>
+
+  <div class="voices">
+    <div class="voice h">
+      <p class="who">Note de partie</p>
+      <blockquote>White draws Black's queen away from blockading the passed pawn.</blockquote>
+      <p class="attrib">Annotation de l'article encyclopédique consacré à cette partie</p>
+      <span class="famtag">tactical_line</span>
+    </div>
+    <div class="voice m">
+      <p class="who">Ontologie v0.4.0</p>
+      <p class="spoken">il y a un clouage ; une pièce est en l'air ; chaque camp a une cible ; les noirs ont un pion de plus</p>
+      <div class="axes">
+        <span class="ax hit">passed_pawn_edge = white_better</span>
+        <span class="ax hit">position_character = closed</span>
+        <span class="ax hit">material_balance = black_slight</span>
+        <span class="ax miss">— aucune valeur « déviation »</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict v-partial">
+    <span class="vlabel">Objet vu, motif absent</span>
+    <p>L'ontologie voit l'<strong>objet</strong> de la combinaison — <code>passed_pawn_edge = white_better</code>, le pion e6 — et le déficit matériel que Botvinnik accepte. Elle ne peut pas nommer le <strong>motif</strong> : <code>immediate_threats</code> déclare huit valeurs, dont <code>overload</code>, mais <strong>aucune déviation</strong>. Un défenseur surchargé et un défenseur qu'on attire ailleurs sont deux choses distinctes ; seule la première est dans le vocabulaire.</p>
+  </div>
+</article>
+
+<section class="tally">
+  <h2>Ce que ces huit positions établissent</h2>
+
+  <div class="counts">
+    <div class="count match"><b>2</b><span>concordances fortes — Réti et Alekhine sur Capablanca</span></div>
+    <div class="count"><b>3</b><span>lectures partielles : l'objet vu, l'intention hors de portée</span></div>
+    <div class="count clash"><b>2</b><span>contradictions, <strong>même axe</strong>, même mécanisme</span></div>
+    <div class="count"><b>1</b><span>hors périmètre assumé</span></div>
+  </div>
+
+  <div class="finding">
+    <h3>piece_cooperation</h3>
+    <p><strong>Défaut de métrique confirmé, pas soupçonné.</strong> L'axe compte les liens de défense mutuelle ; un amas de pièces marque donc haut alors qu'il illustre exactement l'inverse de la coordination. Deux positions sans rapport — Nimzowitsch 1911, Kasparov 1985 — le prennent en défaut de la même façon. Piste : mesurer la convergence vers une même zone (les « théâtres » sont déjà calculés pour <code>plan_openness</code>) plutôt que la défense réciproque.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Immobilité de pion</h3>
+    <p><strong>Axe manquant.</strong> Le vocabulaire décrit les défauts <em>de structure</em> d'un pion (isolé, doublé, arriéré, pendant) mais jamais son <em>immobilisation</em> — le concept que Nimzowitsch place au centre de sa théorie du blocus, et sur lequel il annote deux des trois positions retenues ici. La règle A2 est satisfaite d'avance : un pion sans coup légal se calcule depuis le FEN seul.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Déviation</h3>
+    <p><strong>Valeur manquante dans un axe existant.</strong> <code>immediate_threats</code> porte <code>overload</code> mais pas la déviation, qui est le motif de la combinaison de Botvinnik. Ajout à la source, jamais un rabattement sur <code>overload</code> — l'analyseur refuse d'ailleurs toute valeur non déclarée.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Motifs surdéclenchés <span style="color:var(--machine);font-weight:400">— corrigé</span></h3>
+    <p><strong>Bruit mesuré, puis filtré.</strong> Dans la première version, <code>skewer</code> et <code>discovered_attack</code> sortaient dans presque toutes les positions : les détecteurs étaient purement géométriques et ne testaient pas si le motif <em>gagne</em> quelque chose. Les deux <code>pin</code> relevés étaient le pion f2 cloué contre le roi g1 — la configuration par défaut de tout petit roque face à un fou sur la diagonale a7-g1.</p>
+    <p style="margin-top:11px">Trois filtres ajoutés : un clouage ne compte que s'il porte une pièce ou un pion réellement sous pression, une enfilade exige deux pièces (pas des pions), une découverte exige que la cible soit gagnable. Résultat : <code>skewer</code> disparaît des huit positions, <code>pin</code> ne survit que chez Botvinnik — <code>Nf6</code> cloué par <code>Qe5</code>, le seul vrai des huit.</p>
+  </div>
+
+  <div class="finding">
+    <h3>tension_state</h3>
+    <p><strong>Palier non discriminant.</strong> La valeur <code>building</code> sort sur les huit positions. Un axe qui rend toujours la même valeur ne porte aucune information — il faudrait resserrer le palier, ou reconnaître que <code>building</code> est le cas par défaut et cesser de le dire à voix haute.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Ce qui tient</h3>
+    <p><code>advance_post_held</code> désigne le bon camp aux <strong>quatre</strong> positions où un avant-poste est le sujet — dont le cavalier d3 de Kasparov et le cavalier e5 de Nimzowitsch. <code>seventh_rank = white_absolute</code> et <code>advantage_durability = volatile</code> reconstituent à eux deux la phrase d'Alekhine sur le sacrifice de Capablanca. <code>worst_piece</code>, <code>minor_piece_fit</code>, <code>key_file_control</code> et <code>plan_openness</code> ne se sont trompés nulle part.</p>
+  </div>
+</section>
+
+<section class="tally">
+  <h2>Suite — décrire ne suffit pas : le pont vers les coups</h2>
+
+  <p style="font-size:16.5px;line-height:1.55;max-width:70ch;margin:0 0 26px;color:var(--ink-soft)">Une lecture d'état ne dit à personne quoi jouer. Le YAML cite pourtant deux fois la brique manquante sans jamais la construire — Silman : « the imbalances act as a <em>roadmap that shows each side what to do</em> », et la 2<sup>e</sup> question d'Aagaard. Huit règles ont donc été écrites, chacune tirée d'un axe et d'un auteur, puis <strong>jugées par Stockfish en multi-PV</strong> à profondeur 18 — pas par le coup que le maître a joué, qui n'est pas forcément le meilleur.</p>
+
+  <div class="counts">
+    <div class="count match"><b>6</b><span>candidats dans le <strong>top-5</strong> de Stockfish</span></div>
+    <div class="count"><b>7</b><span>sains — perte ≤ 50 centipions</span></div>
+    <div class="count clash"><b>12</b><span>au-dessus du seuil : du bruit servi comme conseil</span></div>
+    <div class="count"><b>19</b><span>candidats produits sur 8 positions</span></div>
+  </div>
+
+  <div class="finding">
+    <h3>Ce que les règles retrouvent</h3>
+    <p><code>Ne5</code> chez Nimzowitsch et <code>Nd3</code> chez Kasparov — les deux coups que ces joueurs commentent eux-mêmes — sortent en <strong>tête de Stockfish</strong>, trouvés par la même règle : <code>advance_post_held</code>, « cette case est un trou qu'aucun pion adverse ne peut plus défendre ». <code>Rh7</code>, la « calamity » d'Alekhine, sort par <code>seventh_rank</code>. <code>Re1</code> et <code>Rd7</code> aussi. Cinq coups de maîtres retrouvés sans moteur, par des principes écrits il y a un siècle.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Ce qui ne tient pas</h3>
+    <p><strong>12 candidats sur 19 perdent plus de 50 centipions.</strong> Un conseiller qui a tort deux fois sur trois n'est pas livrable. Trois tours de vis ont fait tomber le bruit de 27 à 12 — filtre de survie matérielle, un seul coup par pièce, le cavalier avant le fou sur un trou — mais le reliquat vient toujours de la même règle : <code>key_file_control</code> dit « occupe la colonne ouverte » sans regarder où elle mène.</p>
+  </div>
+
+  <div class="finding">
+    <h3>Le vrai correctif n'est pas un réglage</h3>
+    <p>Le YAML déclare <strong>20 types de relations</strong> — <code>controls</code>, <code>guards</code>, <code>bears_on</code>, <code>screens</code>, <code>attacks</code> — et affirme que « l'unité de cette ontologie n'est PAS la case : c'est la relation ». <strong>L'analyseur n'en calcule aucune.</strong> Il ne rend que des étiquettes globales, et une étiquette globale ne désigne aucun objet sur lequel agir.</p>
+    <p style="margin-top:11px">Relevé le même jour sur DecodeChess, produit commercial : leur unité atomique est exactement la relation que nous déclarons sans l'instancier — « <em>le fou noir en a6 garde la case e2</em> », « <em>le fou blanc en b2 x-ray le fou noir en g7</em> », « <em>le cavalier blanc en d2 contrôle la case c4</em> ». Ils y ajoutent l'itinéraire — « <em>la dame noire en d6 peut jouer c5-a3-a2 et attaquer le fou blanc en b3</em> » — et des relations coup&nbsp;→&nbsp;coup : permet, empêche, prévient, libère, exclut. Rien de tout cela n'exige un LLM.</p>
+    <p style="margin-top:11px">Leur décodage LLM, lui, n'a couvert que <strong>2 positions sur 25 coups</strong> de la partie testée. La contrainte de déterminisme posée en tête du YAML est confirmée par leur propre produit.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Provenance.</strong> Coups et annotations : <a href="https://www.chessgames.com/perl/chessgame?gid=1000795">Nimzowitsch–Salwe</a> et <a href="https://www.chessgames.com/perl/chessgame?gid=1102104">Capablanca–Tartakower</a> (chessgames.com, annotations attribuées à Nimzowitsch et à Alekhine) · <a href="https://www.chessgames.com/perl/chessgame?gid=1067175">Karpov–Kasparov 1985 partie 16</a> · <a href="https://en.wikipedia.org/wiki/Botvinnik_versus_Capablanca,_AVRO_1938">Botvinnik–Capablanca, AVRO 1938</a> · verbatim de Kasparov via <a href="https://en.wikipedia.org/wiki/World_Chess_Championship_1985">World Chess Championship 1985</a>. Le passage de Nimzowitsch sur la partie n° 46 est recoupé avec le texte intégral de <i>Mon Système</i> du corpus local.</p>
+  <p><strong>Limite.</strong> Huit positions ne sont pas un échantillon. Elles suffisent à établir un défaut reproduit deux fois et trois manques identifiés ; elles ne disent rien du taux d'accord général, qui demanderait un corpus de positions annotées et un protocole d'étiquetage.</p>
+</footer>
+
+</div>
+
+<script>
+  const GLYPH = {
+    K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
+    k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'
+  };
+  const FILES = 'abcdefgh';
+
+  for (const board of document.querySelectorAll('.board')) {
+    const mark = board.dataset.mark;
+    const rows = board.dataset.fen.split('/');
+    for (let r = 0; r < 8; r++) {
+      const rank = 8 - r;
+      let file = 0;
+      for (const ch of rows[r]) {
+        if (ch >= '1' && ch <= '8') {
+          for (let k = 0; k < Number(ch); k++) board.appendChild(cell(file++, rank, '', mark));
+        } else {
+          board.appendChild(cell(file++, rank, GLYPH[ch] || '', mark));
+        }
+      }
+    }
+  }
+
+  function cell(file, rank, glyph, mark) {
+    const square = FILES[file] + rank;
+    const el = document.createElement('div');
+    if ((file + rank) % 2 === 1) el.classList.add('d');
+    if (square === mark) el.classList.add('m');
+    el.textContent = glyph;
+    el.setAttribute('aria-label', square + (glyph ? '' : ' vide'));
+    return el;
+  }
+</script>

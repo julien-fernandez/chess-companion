@@ -1,0 +1,289 @@
+version: "0.3.0"
+slug: chess-repertoire-vocabulary
+kind: ops
+origin: >-
+  Chess Companion, 2026-09-25, ADR 0012. Vocabulaire du répertoire d'ouvertures, de ses sources
+  et de sa révision. Distinct de chess-vocabulary (kind chess), qui qualifie l'état d'une position
+  par calcul déterministe : les axes d'ici qualifient des coups, des affirmations, des sources et
+  des rappels, et plusieurs sont déclarés par Julien ou relevés dans un transcript. Les deux
+  ontologies partagent la notion de position, dont l'identité est l'EPD (ADR 0006) ; celle-ci ne
+  la redéfinit pas. Les clés sont en anglais, les libellés en français. Les tables vivent dans
+  sql/schema.sql, rendu depuis cette source par scripts/generate_ddl.py.
+
+axes:
+  side:
+    label: Camp
+    description: Le camp que Julien joue dans un chapitre, ou le camp qui joue un coup.
+    values:
+      - key: white
+        label: Blancs
+        description: Les Blancs.
+        color: "ededed"
+      - key: black
+        label: Noirs
+        description: Les Noirs.
+        color: "1f1f1f"
+
+  move_role:
+    label: Rôle du coup
+    description: Qui doit produire ce coup du répertoire pendant une révision.
+    values:
+      - key: own
+        label: À savoir
+        description: Coup de Julien, à rappeler sans aide. Seul ce rôle devient une carte de révision.
+        color: "1a7f37"
+      - key: opponent
+        label: À anticiper
+        description: Réponse adverse, annoncée par le companion pendant la révision, jamais demandée.
+        color: "9a6700"
+
+  source_kind:
+    label: Nature de la source
+    description: D'où vient une variante du répertoire.
+    values:
+      - key: coach_video
+        label: Vidéo de coach
+        description: Extraite d'une vidéo, par transcript puis rejeu (ADR 0009).
+        color: "0969da"
+      - key: own_games
+        label: Parties de Julien
+        description: Branche relevée dans les parties jouées par Julien.
+        color: "1a7f37"
+      - key: hand_written
+        label: Sans source
+        description: Écrite à la main, sans auteur ni partie pour l'attester.
+        color: "8c959f"
+
+  admission_reason:
+    label: Motif d'admission
+    description: Pourquoi une variante est entrée au répertoire.
+    values:
+      - key: announced_frequency
+        label: Fréquence annoncée
+        description: L'auteur annonce une fréquence chez les adversaires d'une tranche Elo.
+        color: "0969da"
+      - key: source_recurrence
+        label: Récurrente dans la source
+        description: La réponse adverse revient plusieurs fois dans la même source.
+        color: "54aeff"
+      - key: own_games_recurrence
+        label: Vue dans mes parties
+        description: Le couple (position, coup adverse) apparaît au moins 3 fois dans les parties.
+        color: "1a7f37"
+      - key: declared
+        label: Déclarée
+        description: Choix de Julien, sans fréquence mesurée ni annoncée.
+        color: "8c959f"
+
+  claim_nature:
+    label: Nature de l'affirmation
+    description: Ce que l'auteur affirme d'un coup, et ce qui peut le vérifier.
+    values:
+      - key: objective
+        label: Objective
+        description: Échec, attaque, clouage, gain matériel, mat — vérifiable par python-chess.
+        color: "1a7f37"
+      - key: judgment
+        label: Jugement
+        description: Appréciation humaine (« position gagnante »). Rien ne la vérifie.
+        color: "9a6700"
+      - key: statistic
+        label: Statistique
+        description: Fréquence dans une population (« 23 % des joueurs »). Rien ne la vérifie ici.
+        color: "8250df"
+
+  claim_check:
+    label: Vérification de l'affirmation
+    description: Résultat du contrôle programmatique d'une affirmation (garde 2, ADR 0009).
+    _scope:
+      applies_to: les affirmations objectives
+      does_not_apply_to:
+        - "judgment : aucun calcul ne tranche un jugement humain"
+        - "statistic : aucune population n'est disponible pour la mesurer"
+      absence_means: HORS PÉRIMÈTRE pour une affirmation non objective — jamais « vérifiée ».
+    values:
+      - key: pending
+        label: À vérifier
+        description: Affirmation objective relevée, contrôle pas encore écrit.
+        color: "8c959f"
+      - key: verified
+        label: Vérifiée
+        description: Le contrôle programmatique confirme l'effet annoncé sur la position.
+        color: "1a7f37"
+      - key: refuted
+        label: Réfutée
+        description: Le contrôle contredit l'effet annoncé, la variante ne s'admet pas telle quelle.
+        color: "b3261e"
+
+  node_status:
+    label: Statut d'une position
+    description: Ce que Julien sait d'une position du répertoire (spec 2026-09-17).
+    values:
+      - key: unseen
+        label: Non vue
+        description: Ni dans le répertoire, ni dans une partie jouée.
+        color: "8c959f"
+      - key: seen
+        label: Vue
+        description: Dans le répertoire, jamais rappelée sans aide.
+        color: "54aeff"
+      - key: known
+        label: Sue
+        description: Rappelée sans aide à la dernière révision. Jamais déduite de « vue ».
+        color: "1a7f37"
+      - key: missed
+        label: Ratée
+        description: Atteinte en partie, et la suite jouée s'est écartée du répertoire.
+        color: "b3261e"
+
+  review_outcome:
+    label: Résultat d'un rappel
+    description: Ce qu'a donné une carte pendant une révision.
+    values:
+      - key: recalled
+        label: Rappelé
+        description: Coup attendu donné du premier coup, sans aide.
+        color: "1a7f37"
+      - key: recalled_after_retry
+        label: Rappelé après essai
+        description: Coup attendu donné après au moins un mauvais coup.
+        color: "9a6700"
+      - key: failed
+        label: Oublié
+        description: Coup attendu jamais donné ; le companion l'a annoncé.
+        color: "b3261e"
+      - key: unrecognized
+        label: Non compris
+        description: La voix n'a pas été reconnue. Ne dit rien de la mémoire, ne compte pas au rappel.
+        color: "8c959f"
+
+  utterance_decider:
+    label: Décideur d'un énoncé
+    description: Ce qui a tranché le coup lu dans un énoncé de révision (spec 2026-09-30).
+    values:
+      - key: phonetic
+        label: Phonétique
+        description: L'étage 1 a rapproché une transcription d'un coup légal, sans modèle.
+        color: "1a7f37"
+      - key: laya
+        label: Laya
+        description: Le décideur Laya, hébergé sur le VPS, a choisi parmi les coups légaux.
+        color: "0969da"
+      - key: jev
+        label: Jev
+        description: Le décideur Jev (TypeSafe AI, cloud) a choisi parmi les coups légaux.
+        color: "8250df"
+      - key: confirmation
+        label: Confirmation
+        description: Julien a répondu au « Tu as dit … ? » ; confirmed dit s'il a dit oui.
+        color: "9a6700"
+      - key: typed
+        label: Tapé
+        description: Coup tapé au clavier, lu par le parseur exact.
+        color: "57606a"
+      - key: none
+        label: Rien
+        description: "Aucun coup décidé : transcription illisible, ou confirmation sans réponse."
+        color: "8c959f"
+
+  game_platform:
+    label: Provenance d'une partie
+    description: D'où vient une partie jouée par Julien.
+    values:
+      - key: chesscom
+        label: chess.com
+        description: Tirée de l'API publique chess.com (scripts/pull_games.py).
+        color: "7fa650"
+      - key: lichess
+        label: Lichess
+        description: Tirée de Lichess.
+        color: "1f1f1f"
+      - key: otb
+        label: Sur l'échiquier
+        description: Partie sur un vrai échiquier, enregistrée par le companion.
+        color: "9a6700"
+      - key: other
+        label: Autre
+        description: Autre origine (DecodeChess…), nommée dans la partie.
+        color: "8c959f"
+
+  judgment_verdict:
+    label: Verdict d'un coup
+    description: >-
+      Ce qu'un coup a perdu contre le meilleur coup, en probabilité de gain du camp qui joue
+      (formule Lichess, spec 2026-10-06). Seuils sans auteur : choix de la spec, plus bas que Lichess
+      pour attraper les glissements.
+    values:
+      - key: kept
+        label: Conservé
+        description: Moins de 5 % de probabilité de gain perdus.
+        color: "1a7f37"
+      - key: slipped
+        label: Glissé
+        description: De 5 à moins de 10 %.
+        color: "9a6700"
+      - key: mistake
+        label: Erreur
+        description: De 10 à moins de 20 %.
+        color: "bc4c00"
+      - key: blunder
+        label: Gaffe
+        description: 20 % ou plus.
+        color: "b3261e"
+
+  judgment_role:
+    label: Rôle d'une carte de jugement
+    description: Pourquoi un coup de partie est devenu une carte. Jamais montré au recto.
+    values:
+      - key: own
+        label: Mon erreur
+        description: Coup de Julien qui perd 5 % ou plus.
+        color: "b3261e"
+      - key: control
+        label: Témoin
+        description: Coup sain de Julien (moins de 2 %, coup 9 ou plus), pour que la réponse ne soit pas toujours « pire ».
+        color: "1a7f37"
+      - key: opponent_gift
+        label: Cadeau non puni
+        description: Coup adverse qui perd plus de 5 %, dont la réponse de Julien rend au moins la moitié.
+        color: "8250df"
+
+  judgment_reason:
+    label: Raison donnée par Julien
+    description: >-
+      Ce que le coup a fait, choisi au verso d'une carte de jugement. Chaque clé, sauf `other`, est une
+      clé de chess-vocabulary (relation, axe ou sous-type de menace) ; tests/test_judgment_vocabulary.py
+      le vérifie, et l'ordre est celui des boutons (REASON_TAGS).
+    values:
+      - key: hanging_piece
+        label: Pièce laissée en l'air
+        description: Une de mes pièces est attaquée et sans défenseur après le coup.
+        color: "b3261e"
+      - key: allows
+        label: Offre un coup
+        description: Le coup offre un coup neuf à l'adversaire.
+        color: "bc4c00"
+      - key: forgoes
+        label: Renonce
+        description: Le coup passe à côté d'un gain à moi (pièce en l'air, mat en un).
+        color: "9a6700"
+      - key: ignores
+        label: Laisse
+        description: Le coup ne pare pas une menace adverse déjà présente.
+        color: "8250df"
+      - key: weakens
+        label: Affaiblit
+        description: Le coup affaiblit une case.
+        color: "0969da"
+      - key: shelter_integrity
+        label: Abri du roi
+        description: Le coup entame l'abri du roi.
+        color: "54aeff"
+      - key: function_overload
+        label: Pièce surchargée
+        description: Une pièce porte trop de fonctions.
+        color: "57606a"
+      - key: other
+        label: Autre
+        description: Rien de la liste ; à préciser dans la note.
+        color: "8c959f"

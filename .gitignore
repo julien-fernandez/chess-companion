@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+data/*
+!data/ontology/
+# Le journal de drill est une SOURCE écrite à la main, non reproductible : il se versionne.
+!data/pilotage/
+# Le tableau de bord, lui, est un artefact généré par scripts/pilotage.py.
+data/pilotage/*.html
+*.db
+*.pgn
+_chess_tts.mp3
+logs/
+
+# PWA web app
+web/node_modules/
+web/dist/
+
